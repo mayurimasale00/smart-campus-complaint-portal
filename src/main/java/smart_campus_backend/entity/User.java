@@ -32,6 +32,22 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    // =========================
+    // PROFILE INFORMATION
+    // =========================
+
+    private String phone;
+
+    private String studentId;
+
+    private String course;
+
+    private String year;
+
+    private String department;
+
+    private String college;
+
     private LocalDateTime createdAt;
 
     @PrePersist

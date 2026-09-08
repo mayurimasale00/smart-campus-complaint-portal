@@ -25,6 +25,11 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+
+    // =========================
+    // REGISTER
+    // =========================
+
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -34,11 +39,31 @@ public class AuthService {
         User user = User.builder()
                 .name(request.getName())
                 .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
+                .password(
+                        passwordEncoder.encode(
+                                request.getPassword()
+                        )
+                )
                 .role(Role.STUDENT)
+
+                // Profile information
+                .phone(request.getPhone())
+                .studentId(request.getStudentId())
+
+                // Academic information
+                .course(request.getCourse())
+                .year(request.getYear())
+                .department(request.getDepartment())
+                .college(request.getCollege())
+
                 .build();
 
         userRepository.save(user);
+
+
+        // =========================
+        // GENERATE JWT
+        // =========================
 
         String token = jwtService.generateToken(
                 new org.springframework.security.core.userdetails.User(
@@ -48,6 +73,11 @@ public class AuthService {
                 )
         );
 
+
+        // =========================
+        // RESPONSE
+        // =========================
+
         return AuthResponse.builder()
                 .token(token)
                 .message("Registration successful")
@@ -55,6 +85,11 @@ public class AuthService {
                 .name(user.getName())
                 .build();
     }
+
+
+    // =========================
+    // LOGIN
+    // =========================
 
     public AuthResponse login(LoginRequest request) {
 
@@ -65,10 +100,16 @@ public class AuthService {
                 )
         );
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new RuntimeException("User not found")
-                );
+        User user = userRepository.findByEmail(
+                request.getEmail()
+        ).orElseThrow(() ->
+                new RuntimeException("User not found")
+        );
+
+
+        // =========================
+        // GENERATE JWT
+        // =========================
 
         String token = jwtService.generateToken(
                 new org.springframework.security.core.userdetails.User(
@@ -77,6 +118,11 @@ public class AuthService {
                         java.util.List.of()
                 )
         );
+
+
+        // =========================
+        // RESPONSE
+        // =========================
 
         return AuthResponse.builder()
                 .token(token)
