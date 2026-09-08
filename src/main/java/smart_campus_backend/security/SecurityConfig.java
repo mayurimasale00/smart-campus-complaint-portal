@@ -1,4 +1,4 @@
-package smart_campus_backend.config;
+package smart_campus_backend.security;
 
 import lombok.RequiredArgsConstructor;
 
@@ -16,14 +16,19 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 
 import org.springframework.security.core.userdetails.UserDetailsService;
-
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import smart_campus_backend.security.JwtAuthenticationFilter;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -33,47 +38,74 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http) throws Exception {
 
         http
+
+                // =========================
+                // CORS
+                // =========================
+                .cors(cors -> cors
+                        .configurationSource(corsConfigurationSource())
+                )
+
+                // =========================
+                // CSRF
+                // =========================
                 .csrf(csrf -> csrf.disable())
 
+
+                // =========================
+                // AUTHORIZATION
+                // =========================
                 .authorizeHttpRequests(auth -> auth
+
+                        // OPTIONS / CORS preflight
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
+
 
                         // =========================
                         // PUBLIC APIs
                         // =========================
-
                         .requestMatchers(
                                 "/api/auth/**"
                         ).permitAll()
 
 
                         // =========================
+                        // PROFILE
+                        // =========================
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/profile"
+                        ).authenticated()
+
+
+                        // =========================
                         // ADMIN APIs
                         // =========================
 
-                        // Get all complaints
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/complaints"
                         ).hasRole("ADMIN")
 
-                        // Update complaint status
                         .requestMatchers(
                                 HttpMethod.PUT,
                                 "/api/complaints/**"
                         ).hasRole("ADMIN")
 
-                        // Delete complaint
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/api/complaints/**"
                         ).hasRole("ADMIN")
 
-                        // Add complaint status/history update
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/complaints/*/updates"
@@ -84,13 +116,11 @@ public class SecurityConfig {
                         // STUDENT APIs
                         // =========================
 
-                        // Create complaint
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/complaints"
                         ).hasRole("STUDENT")
 
-                        // Get student's complaints
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/complaints/my"
@@ -101,8 +131,6 @@ public class SecurityConfig {
                         // COMPLAINT HISTORY
                         // =========================
 
-                        // Logged-in students/admins can
-                        // view complaint update history
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/complaints/*/updates"
@@ -110,17 +138,15 @@ public class SecurityConfig {
 
 
                         // =========================
-                        // OTHER APIs
+                        // EVERYTHING ELSE
                         // =========================
-
                         .anyRequest().authenticated()
                 )
 
 
                 // =========================
-                // SESSION MANAGEMENT
+                // STATELESS SESSION
                 // =========================
-
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS
@@ -131,7 +157,6 @@ public class SecurityConfig {
                 // =========================
                 // AUTHENTICATION PROVIDER
                 // =========================
-
                 .authenticationProvider(
                         authenticationProvider()
                 )
@@ -140,25 +165,69 @@ public class SecurityConfig {
                 // =========================
                 // JWT FILTER
                 // =========================
-
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 );
 
+
         return http.build();
     }
 
 
-    // =========================
+    // =====================================================
+    // CORS CONFIGURATION
+    // =====================================================
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+
+        CorsConfiguration configuration =
+                new CorsConfiguration();
+
+        configuration.setAllowedOrigins(
+                List.of("http://localhost:5173")
+        );
+
+        configuration.setAllowedMethods(
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "OPTIONS"
+                )
+        );
+
+        configuration.setAllowedHeaders(
+                List.of("*")
+        );
+
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration(
+                "/**",
+                configuration
+        );
+
+        return source;
+    }
+
+
+    // =====================================================
     // AUTHENTICATION PROVIDER
-    // =========================
+    // =====================================================
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
 
         DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
+                new DaoAuthenticationProvider(
+                        userDetailsService
+                );
 
         provider.setPasswordEncoder(
                 passwordEncoder()
@@ -168,9 +237,9 @@ public class SecurityConfig {
     }
 
 
-    // =========================
+    // =====================================================
     // AUTHENTICATION MANAGER
-    // =========================
+    // =====================================================
 
     @Bean
     public AuthenticationManager authenticationManager(
@@ -181,9 +250,9 @@ public class SecurityConfig {
     }
 
 
-    // =========================
+    // =====================================================
     // PASSWORD ENCODER
-    // =========================
+    // =====================================================
 
     @Bean
     public PasswordEncoder passwordEncoder() {
